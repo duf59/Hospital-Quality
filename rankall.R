@@ -24,20 +24,36 @@ rankall <- function(outcome, num = "best") {
   pattern <- paste("^Hospital.30.Day.Death..Mortality..Rates(.*)",
                    sub(" ",".",outcome),
                    sep="")
-  mortality.rate <- grep(pattern,names(data),ignore.case = TRUE, value = TRUE)
+  outcome.var <- grep(pattern,names(data),ignore.case = TRUE, value = TRUE)
   
-  # subset data for specified outcome, exclude hospitals that do not have data
-  data[,mortality.rate] <- as.numeric(data[,mortality.rate])
-  outcome.data <- data[!is.na(data[,mortality.rate]),
-                       c("Hospital.Name","State",mortality.rate)]
+  # subset data for specified outcome
+  data[,outcome.var] <- as.numeric(data[,outcome.var])
+  
+  # exclude hospitals that do not have data, keep only variables of interest
+  outcome.data <- data[!is.na(data[,outcome.var]),
+                       c("Hospital.Name","State",outcome.var)]
+  # Rename variables
   names(outcome.data) <- c("hospital","state","mortality.rate")  
   
+  # Order by State, then mortality rate, then hospital name
+  outcome.data <- outcome.data[order(outcome.data$state,
+                                     outcome.data$mortality.rate,
+                                     outcome.data$hospital),]
   
-  # CONTINUE HERE - COMPUTE RANKING BY STATE CODE...
+  # Set the rank to 1 if  num = "best"
+  if (num=="best") {
+    num <- 1
+  }
   
-  # Get state codes
-  state.list    <- unique(data[,"State"])
+  # get the hospital with specified ranking for each state
+
+  final <- sapply(split(outcome.data,outcome.data$state,drop = FALSE),
+                  function(x) { if (num=="worst") c(x$hospital[nrow(x)], x$state[1])
+                                else c(x$hospital[num], x$state[1])
+                              })
+  final <- as.data.frame(t(final), stringsAsFactors = FALSE)
+  names(final) <- c("hospital","state")
   
-  ## Return a data frame with the hospital names and the
-  ## (abbreviated) state name
+  final
+  
 }
